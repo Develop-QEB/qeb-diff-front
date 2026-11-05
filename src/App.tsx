@@ -6,7 +6,7 @@ import MatrizBdTab from './components/MatrizBdTab';
 import DiagnosticoTab from './components/DiagnosticoTab';
 import LoginScreen from './components/LoginScreen';
 import { IconRail, type RailTab } from './ds';
-import { api, onUnauthorized, tokenStore, userStore } from './lib/api';
+import { api, onUnauthorized, tokenStore } from './lib/api';
 
 type AuthState = 'checking' | 'in' | 'out';
 
@@ -46,7 +46,7 @@ export default function App() {
           api.logout();
           setAuthState('out');
         }}
-        workspace={userStore.get() || 'Develop-QEB'}
+        workspace="Develop-QEB"
       />
       <main className="min-w-0 flex-1 overflow-auto">
         <div className="mx-auto max-w-[1600px] px-8">

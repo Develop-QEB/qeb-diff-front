@@ -51,18 +51,10 @@ const API_BASE = ((import.meta as any).env?.VITE_API_URL ?? '').toString().repla
 const u = (path: string): string => `${API_BASE}${path}`;
 
 const TOKEN_KEY = 'qeb-diff-token';
-const USER_KEY = 'qeb-diff-user';
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY) ?? '',
   set: (t: string) => localStorage.setItem(TOKEN_KEY, t),
-  clear: () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-  },
-};
-export const userStore = {
-  get: () => localStorage.getItem(USER_KEY) ?? '',
-  set: (u: string) => localStorage.setItem(USER_KEY, u),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
 const unauthHandlers = new Set<() => void>();
@@ -128,18 +120,16 @@ export const api = {
     if (!r.ok) throw new Error((await r.json()).error);
     return r.json();
   },
-  login: async (username: string, password: string) => {
-    const r = await fetch(u('/api/auth/login'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) });
+  login: async (password: string) => {
+    const r = await fetch(u('/api/auth/login'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) });
     if (!r.ok) throw new Error((await r.json()).error ?? 'login fallido');
-    const body = await r.json();
-    tokenStore.set(body.token);
-    if (body.username) userStore.set(body.username);
-    return body.token as string;
+    const { token } = await r.json();
+    tokenStore.set(token);
+    return token as string;
   },
   checkAuth: async () => {
     const r = await fetch(u('/api/auth/check'), { headers: authHeaders() });
     const body = await r.json();
-    if (body?.username) userStore.set(body.username);
     return Boolean(body?.ok);
   },
   logout: () => tokenStore.clear(),
