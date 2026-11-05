@@ -40,6 +40,11 @@ export default {
           bg: '#212023',
           ink: '#bdbdc0',
         },
+        orange: {
+          DEFAULT: '#f97316',
+          ink: '#fb923c',
+          bg: '#2a1a0f',
+        },
       },
       borderColor: {
         DEFAULT: '#222224',

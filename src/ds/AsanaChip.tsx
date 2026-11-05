@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ArrowSquareOut } from '@phosphor-icons/react';
 import { api, AsanaTask } from '../lib/api';
 import { cn } from './cn';
 
@@ -57,16 +58,17 @@ export function AsanaChip({ gid }: AsanaChipProps) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      title={title ?? (loading ? 'cargando tarea...' : `Asana #${gid}`)}
+      title={`${title ?? (loading ? 'cargando tarea...' : `Asana #${gid}`)} — abre en Asana (nueva ventana)`}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex items-center gap-1 rounded-chip border border-border px-1.5 py-0.5 text-meta mono',
-        'text-muted hover:text-ink hover:border-control transition-colors max-w-[260px]',
+        'inline-flex items-center gap-1 rounded-chip border border-orange/40 bg-orange-bg px-1.5 py-0.5 text-meta mono',
+        'text-orange-ink hover:border-orange hover:text-orange transition-colors max-w-[280px]',
         task?.completed && 'line-through opacity-70',
       )}
     >
-      <span className="text-[10px] uppercase tracking-wider text-faint">asana</span>
+      <span className="text-[10px] uppercase tracking-wider opacity-80">asana</span>
       <span className="truncate">{title ?? `#${gid}`}</span>
+      <ArrowSquareOut size={11} weight="bold" aria-hidden className="shrink-0 opacity-80" />
     </a>
   );
 }
