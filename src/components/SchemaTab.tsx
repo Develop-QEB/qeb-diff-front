@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, DbName } from '../lib/api';
-import { PageTitle, Select, Button, StatusPill, DiffTokens, cn } from '../ds';
+import { PageTitle, Select, Button, StatusPill, DiffTokens, QebLoader, cn } from '../ds';
 
 const DBS: DbName[] = ['main', 'dev', 'release', 'stage'];
 
@@ -30,7 +30,7 @@ export default function SchemaTab() {
 
   const diff = data?.diff;
 
-  const finding = useMemo(() => {
+  const finding = useMemo((): React.ReactNode => {
     if (!diff) return null;
     const n = (diff.tables.onlyInA?.length ?? 0) + (diff.tables.onlyInB?.length ?? 0) + (diff.tables.inBoth?.length ?? 0);
     if (n === 0) return <>Schema de <span className="mono text-ink">{a}</span> y <span className="mono text-ink">{b}</span> coincide.</>;
@@ -82,6 +82,10 @@ export default function SchemaTab() {
 
       {error && (
         <div className="my-3 rounded-chip border border-negative/30 bg-negative-bg px-3 py-2 text-body text-negative-ink">{error}</div>
+      )}
+
+      {!diff && !error && (
+        <div className="flex items-center justify-center py-16"><QebLoader size={56} /></div>
       )}
 
       {diff && (

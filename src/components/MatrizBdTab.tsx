@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, DbName } from '../lib/api';
-import { PageTitle, Button, Checkbox, LadderBadge, DiffTokens, cn, type LadderSlot } from '../ds';
+import { PageTitle, Button, Checkbox, LadderBadge, DiffTokens, QebLoader, cn, type LadderSlot } from '../ds';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 
 interface Variant { db: DbName; valor: string | null }
@@ -61,8 +61,8 @@ export default function MatrizBdTab() {
     return t;
   }, [data]);
 
-  const finding = useMemo(() => {
-    if (!totales) return 'cargando…';
+  const finding = useMemo((): React.ReactNode => {
+    if (!totales) return null;
     const n = totales.columnas + totales.indices + totales.fks + totales.vistas + totales.routines;
     if (n === 0) return 'Las 4 BDs coinciden estructuralmente.';
     return <><span className="mono text-ink">{n}</span> elementos difieren entre las 4 BDs.</>;
@@ -105,6 +105,9 @@ export default function MatrizBdTab() {
       )}
 
       <div className="flex-1 overflow-auto py-5 space-y-6">
+        {!filtered && !error && (
+          <div className="flex items-center justify-center py-16"><QebLoader size={56} /></div>
+        )}
         {filtered && Object.entries(filtered.tablas).map(([name, t]) => (
           <section key={name} className="hairline-t pt-4">
             <div className="flex flex-wrap items-baseline gap-3 mb-3">

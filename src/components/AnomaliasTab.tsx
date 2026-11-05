@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
-import { PageTitle, Button, Table, TBody, THead, TR, TH, TD, LadderBadge, StatusPill, AsanaChip, type LadderSlot } from '../ds';
+import { PageTitle, Button, Table, TBody, THead, TR, TH, TD, LadderBadge, StatusPill, AsanaChip, QebLoader, type LadderSlot } from '../ds';
 
 const BRANCHES = ['stage', 'dev', 'release', 'main'] as const;
 const DBS = ['stage', 'dev', 'release', 'main'] as const;
@@ -35,7 +35,7 @@ export default function AnomaliasTab() {
     if (frontA) parts.push(`${frontA.length} en front`);
     if (backA) parts.push(`${backA.length} en back`);
     if (schemaA) parts.push(`${schemaA.length} en BD`);
-    if (parts.length === 0) return 'cargando…';
+    if (parts.length === 0) return null;
     return <>Flujo esperado: <span className="mono text-ink">stage → dev → release → main</span>. Actual: {parts.join(', ')}.</>;
   }, [frontA, backA, schemaA]);
 
@@ -102,7 +102,9 @@ function AnomaliesBranchSection({ title, anomalies, error, repo, onIgnore }: {
           no se pudo cargar: {error}
         </div>
       )}
-      {!error && !anomalies && <div className="text-meta text-muted">cargando {title}…</div>}
+      {!error && !anomalies && (
+        <div className="flex items-center justify-center py-10"><QebLoader size={40} /></div>
+      )}
       {anomalies && anomalies.length === 0 && (
         <div className="rounded-chip border border-dashed border-positive/30 px-3 py-2 text-meta text-positive">
           Todo limpio: ningún commit viola el flujo.
@@ -169,7 +171,9 @@ function AnomaliesSchemaSection({ anomalies, error }: { anomalies: any[] | null;
           </div>
         </div>
       )}
-      {!error && !anomalies && <div className="text-meta text-muted">cargando esquema…</div>}
+      {!error && !anomalies && (
+        <div className="flex items-center justify-center py-10"><QebLoader size={40} /></div>
+      )}
       {anomalies && anomalies.length === 0 && (
         <div className="rounded-chip border border-dashed border-positive/30 px-3 py-2 text-meta text-positive">
           Todo limpio: ningún elemento de BD viola el flujo.

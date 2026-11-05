@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, RepoName } from '../lib/api';
-import { PageTitle, Select, Button, Checkbox, Table, THead, TBody, TR, TH, TD, StatusPill, cn } from '../ds';
+import { PageTitle, Select, Button, Checkbox, Table, THead, TBody, TR, TH, TD, StatusPill, QebLoader, cn } from '../ds';
 import { Check, Copy } from '@phosphor-icons/react';
 
 const BRANCH_ORDER = ['stage', 'dev', 'release', 'main'] as const;
@@ -42,8 +42,8 @@ export default function DiagnosticoTab() {
     }
   }
 
-  const finding = useMemo(() => {
-    if (!deps || !env) return 'cargando…';
+  const finding = useMemo((): React.ReactNode => {
+    if (!deps || !env) return null;
     return (
       <>
         <span className="num mono text-ink">{deps.rows.filter((r: any) => r.divergente).length}</span> paquetes y{' '}
@@ -99,7 +99,9 @@ export default function DiagnosticoTab() {
             son las que no coinciden con lo que tienen las otras ramas. <span className="italic">faltante</span> = la rama no declara ese paquete.
           </div>
 
-          {!deps && <div className="text-meta text-muted">cargando…</div>}
+          {!deps && (
+            <div className="flex items-center justify-center py-8"><QebLoader size={40} /></div>
+          )}
           {deps && depRows.length === 0 && (
             <div className="rounded-chip border border-dashed border-positive/30 px-3 py-2 text-meta text-positive">
               Todos los paquetes coinciden entre las 4 ramas.
@@ -180,7 +182,9 @@ export default function DiagnosticoTab() {
             })}
           </div>
 
-          {!env && <div className="text-meta text-muted">cargando…</div>}
+          {!env && (
+            <div className="flex items-center justify-center py-8"><QebLoader size={40} /></div>
+          )}
           {env && envRows.length === 0 && (
             <div className="rounded-chip border border-dashed border-positive/30 px-3 py-2 text-meta text-positive">
               Todas las variables coinciden entre las 4 ramas.

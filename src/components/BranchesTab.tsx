@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, BranchName, DiffCommit, RepoName } from '../lib/api';
-import { PageTitle, Select, Checkbox, Button, StatusPill, LadderBadge, AsanaChip, cn, type LadderSlot } from '../ds';
+import { PageTitle, Select, Checkbox, Button, StatusPill, LadderBadge, AsanaChip, QebLoader, cn, type LadderSlot } from '../ds';
 
 const FLOW_ORDER: BranchName[] = ['stage', 'dev', 'release', 'main'];
 
@@ -66,7 +66,7 @@ export default function BranchesTab() {
 
   async function pickFile(f: string) {
     setSelectedFile(f);
-    setFileText('cargando diff…');
+    setFileText('');
     try {
       setFileText(await api.fileDiff(repo, a, b, f));
     } catch (e: any) {
@@ -78,7 +78,7 @@ export default function BranchesTab() {
 
   const sameSha = useMemo(() => heads[a] && heads[b] && heads[a] === heads[b], [heads, a, b]);
 
-  const finding = useMemo(() => {
+  const finding = useMemo((): React.ReactNode => {
     if (!diff) return null;
     const exclA = diff.summary.exclusivosA - (hideReverts ? diff.summary.revertsA : 0);
     const exclB = diff.summary.exclusivosB;
@@ -156,7 +156,12 @@ export default function BranchesTab() {
           <div className="sticky top-0 z-10 bg-ground px-3 py-2 hairline-b mono text-meta text-muted">
             {selectedFile ?? 'selecciona un archivo'}
           </div>
-          <pre className="whitespace-pre p-3 text-meta leading-tight mono text-ink">{fileText}</pre>
+          {selectedFile && !fileText && (
+            <div className="flex items-center justify-center py-16"><QebLoader size={44} /></div>
+          )}
+          {fileText && (
+            <pre className="whitespace-pre p-3 text-meta leading-tight mono text-ink">{fileText}</pre>
+          )}
         </div>
       </div>
     </div>
@@ -188,7 +193,13 @@ function CommitColumn({ title, commits, className, summary, side, onToggleIgnore
         )}
       </div>
 
-      {commits.length === 0 && <div className="px-3 py-4 text-meta text-muted">sin commits</div>}
+      {commits.length === 0 && (
+        summary ? (
+          <div className="px-3 py-4 text-meta text-muted">sin commits</div>
+        ) : (
+          <div className="flex items-center justify-center py-10"><QebLoader size={40} /></div>
+        )
+      )}
 
       <ul>
         {commits.map((c) => (
