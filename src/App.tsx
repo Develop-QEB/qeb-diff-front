@@ -5,7 +5,7 @@ import AnomaliasTab from './components/AnomaliasTab';
 import MatrizBdTab from './components/MatrizBdTab';
 import DiagnosticoTab from './components/DiagnosticoTab';
 import LoginScreen from './components/LoginScreen';
-import { IconRail, type RailTab } from './ds';
+import { IconRail, QebLoaderFullscreen, type RailTab } from './ds';
 import { api, onUnauthorized, tokenStore } from './lib/api';
 
 type AuthState = 'checking' | 'in' | 'out';
@@ -27,11 +27,7 @@ export default function App() {
   }, []);
 
   if (authState === 'checking') {
-    return (
-      <div className="flex h-full items-center justify-center text-body text-muted">
-        verificando sesión…
-      </div>
-    );
+    return <QebLoaderFullscreen label="verificando sesión…" />;
   }
   if (authState === 'out') {
     return <LoginScreen onLoggedIn={() => setAuthState('in')} />;
