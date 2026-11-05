@@ -24,8 +24,18 @@ export function IconRail({ tab, onChange, onLogout, workspace }: IconRailProps) 
       aria-label="qeb-diff navigation"
       className="flex h-full w-rail shrink-0 flex-col items-center border-r border-rule bg-ground"
     >
-      <div className="flex h-rail w-full items-center justify-center" aria-label={`workspace ${workspace ?? 'qeb-diff'}`}>
-        <ArrowsLeftRight size={20} weight="regular" aria-hidden className="text-ink" />
+      <div
+        className="relative flex h-rail w-full items-center justify-center"
+        aria-label={`workspace ${workspace ?? 'qeb-diff'}`}
+        title={`QEB · qeb-diff${workspace ? ' · ' + workspace : ''}`}
+      >
+        <img src="/qeb-logo.svg" alt="QEB" width={30} height={30} className="object-contain" />
+        <ArrowsLeftRight
+          size={10}
+          weight="bold"
+          aria-hidden
+          className="absolute right-1.5 bottom-2 text-muted"
+        />
       </div>
 
       <div className="mt-2 flex flex-1 flex-col items-center gap-1">

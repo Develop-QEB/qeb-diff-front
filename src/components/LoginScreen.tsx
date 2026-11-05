@@ -29,9 +29,12 @@ export default function LoginScreen({ onLoggedIn }: { onLoggedIn: () => void }) 
         onSubmit={submit}
         className="w-[360px] rounded-card border border-border bg-surface px-8 py-7"
       >
-        <div className="flex items-center gap-2 mb-6">
-          <ArrowsLeftRight size={18} weight="bold" aria-hidden className="text-ink" />
-          <h1 className="text-section font-semibold leading-none">qeb-diff</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <img src="/qeb-logo.svg" alt="QEB" width={34} height={34} className="object-contain" />
+          <div className="flex items-baseline gap-1.5">
+            <h1 className="text-section font-semibold leading-none">qeb-diff</h1>
+            <ArrowsLeftRight size={14} weight="bold" aria-hidden className="text-muted" />
+          </div>
         </div>
 
         <p className="text-meta text-muted mb-5">
