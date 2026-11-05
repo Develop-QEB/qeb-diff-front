@@ -11,6 +11,16 @@ export interface Commit {
   subject: string;
   isMerge: boolean;
   isRevert: boolean;
+  asanaId?: string;
+}
+
+export interface AsanaTask {
+  gid: string;
+  name: string;
+  permalinkUrl: string;
+  completed: boolean;
+  assignee?: { gid: string; name: string } | null;
+  dueOn?: string | null;
 }
 
 export interface BranchHead {
@@ -86,6 +96,14 @@ export const api = {
   snapshot: (db: DbName, refresh = false) => j<any>(`/api/schema/snapshot/${db}${refresh ? '?refresh=1' : ''}`),
   schemaCompare: (a: DbName, b: DbName, refresh = false) => j<any>(`/api/schema/compare/${a}/${b}${refresh ? '?refresh=1' : ''}`),
   schemaMatrix: () => j<any>('/api/schema/matrix'),
+  asanaTask: async (gid: string): Promise<AsanaTask | null> => {
+    const r = await fetch(u(`/api/asana/task/${gid}`), { headers: authHeaders() });
+    if (r.status === 401) { triggerUnauthorized(); throw new Error('sesion invalida'); }
+    if (r.status === 503) return null;
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error((await r.json()).error || `${r.status}`);
+    return r.json();
+  },
   diagMigrations: () => j<any>('/api/diagnostico/migrations'),
   diagDeps: (repo: RepoName) => j<any>(`/api/diagnostico/deps/${repo}`),
   diagEnv: (repo: RepoName) => j<any>(`/api/diagnostico/env/${repo}`),

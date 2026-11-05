@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, BranchName, DiffCommit, RepoName } from '../lib/api';
-import { PageTitle, Select, Checkbox, Button, StatusPill, LadderBadge, cn, type LadderSlot } from '../ds';
+import { PageTitle, Select, Checkbox, Button, StatusPill, LadderBadge, AsanaChip, cn, type LadderSlot } from '../ds';
 
 const FLOW_ORDER: BranchName[] = ['stage', 'dev', 'release', 'main'];
 
@@ -233,7 +233,10 @@ function CommitColumn({ title, commits, className, summary, side, onToggleIgnore
               )}
             </div>
             <div className={cn('mt-1 text-body break-words', side === 'A' ? 'text-ink' : 'text-ink')}>{c.subject}</div>
-            <div className="text-meta text-muted">{c.author}</div>
+            <div className="mt-1 flex items-center gap-2 flex-wrap">
+              <span className="text-meta text-muted">{c.author}</span>
+              {c.asanaId && <AsanaChip gid={c.asanaId} />}
+            </div>
           </li>
         ))}
       </ul>

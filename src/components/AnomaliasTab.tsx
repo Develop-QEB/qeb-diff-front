@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
-import { PageTitle, Button, Table, TBody, THead, TR, TH, TD, LadderBadge, StatusPill, type LadderSlot } from '../ds';
+import { PageTitle, Button, Table, TBody, THead, TR, TH, TD, LadderBadge, StatusPill, AsanaChip, type LadderSlot } from '../ds';
 
 const BRANCHES = ['stage', 'dev', 'release', 'main'] as const;
 const DBS = ['stage', 'dev', 'release', 'main'] as const;
@@ -127,7 +127,10 @@ function AnomaliesBranchSection({ title, anomalies, error, repo, onIgnore }: {
                 <TD mono>{a.shortHash}</TD>
                 <TD muted>{a.author}</TD>
                 <TD muted><span className="num mono">{new Date(a.date).toLocaleString()}</span></TD>
-                <TD className="max-w-md truncate" title={a.subject}>{a.subject}</TD>
+                <TD className="max-w-md">
+                  <div className="truncate" title={a.subject}>{a.subject}</div>
+                  {a.asanaId && <div className="mt-1"><AsanaChip gid={a.asanaId} /></div>}
+                </TD>
                 <TD>
                   <LadderBadge slots={ladderSlots(a, BRANCHES)} labels={[...BRANCHES] as [string, string, string, string]} />
                 </TD>

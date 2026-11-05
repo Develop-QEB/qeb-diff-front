@@ -14,3 +14,4 @@ export { UnderlineTabs } from './UnderlineTabs';
 export { FilterBar, Segment, Checkbox } from './FilterBar';
 export { EmptyBlock } from './EmptyBlock';
 export { DiffTokens } from './DiffTokens';
+export { AsanaChip } from './AsanaChip';
