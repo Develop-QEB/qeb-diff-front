@@ -110,6 +110,7 @@ export const api = {
   branchAnomalies: (repo: RepoName) => j<any[]>(`/api/anomalies/branches/${repo}`),
   schemaAnomalies: () => j<any[]>('/api/anomalies/schema'),
   huerfanas: (db: DbName) => j<any>(`/api/huerfanas/${db}`),
+  carasColgadas: (db: DbName) => j<any>(`/api/caras-colgadas/${db}`),
   logs: (env: DbName, since?: string | null, lines = 200) => {
     const q = new URLSearchParams();
     if (since) q.set('since', since);

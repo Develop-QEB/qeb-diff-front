@@ -5,6 +5,7 @@ import AnomaliasTab from './components/AnomaliasTab';
 import MatrizBdTab from './components/MatrizBdTab';
 import DiagnosticoTab from './components/DiagnosticoTab';
 import HuerfanasTab from './components/HuerfanasTab';
+import CarasColgadasTab from './components/CarasColgadasTab';
 import LogsTab from './components/LogsTab';
 import LoginScreen from './components/LoginScreen';
 import { IconRail, QebLoaderFullscreen, type RailTab } from './ds';
@@ -54,6 +55,7 @@ export default function App() {
           {tab === 'matriz' && <MatrizBdTab />}
           {tab === 'diagnostico' && <DiagnosticoTab />}
           {tab === 'huerfanas' && <HuerfanasTab />}
+          {tab === 'colgadas' && <CarasColgadasTab />}
           {tab === 'logs' && <LogsTab />}
         </div>
       </main>

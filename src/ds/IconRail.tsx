@@ -1,7 +1,7 @@
-import { ArrowsLeftRight, GitBranch, Database, WarningDiamond, GridFour, Stethoscope, SignOut, Ghost, Terminal, type Icon } from '@phosphor-icons/react';
+import { ArrowsLeftRight, GitBranch, Database, WarningDiamond, GridFour, Stethoscope, SignOut, Ghost, Terminal, HourglassMedium, type Icon } from '@phosphor-icons/react';
 import { cn } from './cn';
 
-export type RailTab = 'branches' | 'schema' | 'anomalias' | 'matriz' | 'diagnostico' | 'huerfanas' | 'logs';
+export type RailTab = 'branches' | 'schema' | 'anomalias' | 'matriz' | 'diagnostico' | 'huerfanas' | 'colgadas' | 'logs';
 
 export interface IconRailProps {
   tab: RailTab;
@@ -17,6 +17,7 @@ const items: Array<{ id: RailTab; label: string; Icon: Icon }> = [
   { id: 'matriz',      label: 'Matriz BD',       Icon: GridFour },
   { id: 'diagnostico', label: 'Diagnóstico',     Icon: Stethoscope },
   { id: 'huerfanas',   label: 'Huérfanas',        Icon: Ghost },
+  { id: 'colgadas',    label: 'Caras colgadas',   Icon: HourglassMedium },
   { id: 'logs',        label: 'Logs',             Icon: Terminal },
 ];
 
