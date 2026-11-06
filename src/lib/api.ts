@@ -110,6 +110,12 @@ export const api = {
   branchAnomalies: (repo: RepoName) => j<any[]>(`/api/anomalies/branches/${repo}`),
   schemaAnomalies: () => j<any[]>('/api/anomalies/schema'),
   huerfanas: (db: DbName) => j<any>(`/api/huerfanas/${db}`),
+  logs: (env: DbName, since?: string | null, lines = 200) => {
+    const q = new URLSearchParams();
+    if (since) q.set('since', since);
+    q.set('lines', String(lines));
+    return j<{ env: DbName; source: 'pm2' | 'digitalocean'; lines: string[]; cursor: string | null; truncated: boolean; fetchedAt: string }>(`/api/logs/${env}?${q.toString()}`);
+  },
   listIgnored: (repo?: RepoName) => j<any[]>(`/api/ignored${repo ? `?repo=${repo}` : ''}`),
   addIgnored: async (repo: RepoName, hash: string, subject: string, reason?: string) => {
     const r = await fetch(u('/api/ignored'), { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ repo, hash, subject, reason }) });
