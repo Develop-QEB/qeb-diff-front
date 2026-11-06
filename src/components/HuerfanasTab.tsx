@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, DbName } from '../lib/api';
-import { PageTitle, Select, Button, StatusPill, Table, THead, TBody, TR, TH, TD, QebLoader, cn } from '../ds';
+import { PageTitle, Button, StatusPill, Table, THead, TBody, TR, TH, TD, QebLoader, cn } from '../ds';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 
-const DBS: DbName[] = ['main', 'release', 'dev', 'stage'];
+const DB: DbName = 'main';
 
 interface Huerfana {
   cara_id: number;
@@ -31,7 +31,6 @@ interface Report {
 }
 
 export default function HuerfanasTab() {
-  const [db, setDb] = useState<DbName>('main');
   const [data, setData] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export default function HuerfanasTab() {
     setError(null);
     setData(null);
     try {
-      setData(await api.huerfanas(db));
+      setData(await api.huerfanas(DB));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -49,18 +48,18 @@ export default function HuerfanasTab() {
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [db]);
+  useEffect(() => { load(); }, []);
 
   const finding = useMemo((): React.ReactNode => {
     if (!data) return null;
-    if (data.total === 0) return <>No hay autorizaciones huérfanas en <span className="mono text-ink">{db}</span>.</>;
+    if (data.total === 0) return <>No hay autorizaciones huérfanas en producción.</>;
     return (
       <>
-        <span className="num mono text-negative">{data.total}</span> caras con autorizacion pendiente sin tarea DG/DCM en <span className="mono text-ink">{db}</span> (
+        <span className="num mono text-negative">{data.total}</span> caras con autorizacion pendiente sin tarea DG/DCM en producción (
         <span className="num mono text-ink">{data.dg.length}</span> DG · <span className="num mono text-ink">{data.dcm.length}</span> DCM).
       </>
     );
-  }, [data, db]);
+  }, [data]);
 
   const combined = useMemo(() => {
     if (!data) return [];
@@ -75,12 +74,9 @@ export default function HuerfanasTab() {
         actions={<Button size="sm" onClick={load} disabled={loading}>{loading ? 'cargando…' : 'refrescar'}</Button>}
       />
 
-      <div className="flex items-center gap-4 pb-4 hairline-b">
-        <Select label="BD" value={db} onChange={(e) => setDb(e.target.value as DbName)}>
-          {DBS.map((d) => <option key={d} value={d}>{d}</option>)}
-        </Select>
+      <div className="flex items-start gap-4 pb-4 hairline-b">
         <div className="text-meta text-muted">
-          Caras con <code className="mono text-ink">autorizacion_dg</code> o <code className="mono text-ink">autorizacion_dcm</code> en{' '}
+          Caras en <span className="mono text-ink">main</span> (producción) con <code className="mono text-ink">autorizacion_dg</code> o <code className="mono text-ink">autorizacion_dcm</code> en{' '}
           <span className="mono text-ink">'pendiente'</span> pero sin tarea DG/DCM asociada. Nadie puede atenderlas porque la tarea no existe.
         </div>
       </div>
