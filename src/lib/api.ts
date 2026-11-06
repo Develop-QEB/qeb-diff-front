@@ -109,6 +109,7 @@ export const api = {
   diagEnv: (repo: RepoName) => j<any>(`/api/diagnostico/env/${repo}`),
   branchAnomalies: (repo: RepoName) => j<any[]>(`/api/anomalies/branches/${repo}`),
   schemaAnomalies: () => j<any[]>('/api/anomalies/schema'),
+  huerfanas: (db: DbName) => j<any>(`/api/huerfanas/${db}`),
   listIgnored: (repo?: RepoName) => j<any[]>(`/api/ignored${repo ? `?repo=${repo}` : ''}`),
   addIgnored: async (repo: RepoName, hash: string, subject: string, reason?: string) => {
     const r = await fetch(u('/api/ignored'), { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ repo, hash, subject, reason }) });

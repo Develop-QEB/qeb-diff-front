@@ -1,7 +1,7 @@
-import { ArrowsLeftRight, GitBranch, Database, WarningDiamond, GridFour, Stethoscope, SignOut, type Icon } from '@phosphor-icons/react';
+import { ArrowsLeftRight, GitBranch, Database, WarningDiamond, GridFour, Stethoscope, SignOut, Ghost, type Icon } from '@phosphor-icons/react';
 import { cn } from './cn';
 
-export type RailTab = 'branches' | 'schema' | 'anomalias' | 'matriz' | 'diagnostico';
+export type RailTab = 'branches' | 'schema' | 'anomalias' | 'matriz' | 'diagnostico' | 'huerfanas';
 
 export interface IconRailProps {
   tab: RailTab;
@@ -16,6 +16,7 @@ const items: Array<{ id: RailTab; label: string; Icon: Icon }> = [
   { id: 'anomalias',   label: 'Anomalías',       Icon: WarningDiamond },
   { id: 'matriz',      label: 'Matriz BD',       Icon: GridFour },
   { id: 'diagnostico', label: 'Diagnóstico',     Icon: Stethoscope },
+  { id: 'huerfanas',   label: 'Huérfanas',        Icon: Ghost },
 ];
 
 export function IconRail({ tab, onChange, onLogout, workspace }: IconRailProps) {
