@@ -245,7 +245,7 @@ function CommitColumn({ title, commits, className, summary, side, onToggleIgnore
             </div>
             <div className={cn('mt-1 text-body break-words', side === 'A' ? 'text-ink' : 'text-ink')}>{c.subject}</div>
             <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <span className="text-meta text-muted">{c.author}</span>
+              <span className="text-meta text-author font-medium">{c.author}</span>
               {c.asanaId && <AsanaChip gid={c.asanaId} />}
             </div>
           </li>

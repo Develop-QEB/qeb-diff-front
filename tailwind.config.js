@@ -41,10 +41,11 @@ export default {
           ink: '#bdbdc0',
         },
         orange: {
-          DEFAULT: '#f97316',
-          ink: '#fb923c',
-          bg: '#2a1a0f',
+          DEFAULT: '#f06a6a',
+          ink: '#f9736a',
+          bg: '#2a1016',
         },
+        author: '#e8a87c',
       },
       borderColor: {
         DEFAULT: '#222224',

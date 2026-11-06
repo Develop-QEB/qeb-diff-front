@@ -127,7 +127,7 @@ function AnomaliesBranchSection({ title, anomalies, error, repo, onIgnore }: {
             {anomalies.map((a) => (
               <TR key={a.hash}>
                 <TD mono>{a.shortHash}</TD>
-                <TD muted>{a.author}</TD>
+                <TD><span className="text-author font-medium">{a.author}</span></TD>
                 <TD muted><span className="num mono">{new Date(a.date).toLocaleString()}</span></TD>
                 <TD className="max-w-md">
                   <div className="truncate" title={a.subject}>{a.subject}</div>
