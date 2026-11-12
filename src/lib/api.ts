@@ -148,6 +148,12 @@ export const api = {
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `${r.status}`);
     return r.json() as Promise<{ ok: boolean; proc: ProcStatus | null }>;
   },
+  redeployLog: async (sourceKey: string) => {
+    const r = await fetch(u(`/api/logs/${encodeURIComponent(sourceKey)}/redeploy`), { method: 'POST', headers: authHeaders() });
+    if (r.status === 401) { triggerUnauthorized(); throw new Error('sesion invalida'); }
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `${r.status}`);
+    return r.json() as Promise<{ ok: boolean; started: boolean; script: string }>;
+  },
   listIgnored: (repo?: RepoName) => j<any[]>(`/api/ignored${repo ? `?repo=${repo}` : ''}`),
   addIgnored: async (repo: RepoName, hash: string, subject: string, reason?: string) => {
     const r = await fetch(u('/api/ignored'), { method: 'POST', headers: { 'content-type': 'application/json', ...authHeaders() }, body: JSON.stringify({ repo, hash, subject, reason }) });

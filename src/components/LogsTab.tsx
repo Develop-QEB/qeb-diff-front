@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api, type LogSourceInfo, type ProcStatus } from '../lib/api';
 import { PageTitle, Button, UnderlineTabs, StatusPill, cn } from '../ds';
-import { Pause, Play, Broom, ArrowClockwise } from '@phosphor-icons/react';
+import { Pause, Play, Broom, ArrowClockwise, Rocket } from '@phosphor-icons/react';
 
 const POLL_MS = 5000;
 const MAX_BUFFER = 2000;
@@ -127,6 +127,7 @@ export default function LogsTab() {
   const [paused, setPaused] = useState(false);
   const [states, setStates] = useState<Record<string, EnvState>>({});
   const [restarting, setRestarting] = useState(false);
+  const [redeploying, setRedeploying] = useState(false);
   const [restartMsg, setRestartMsg] = useState<string | null>(null);
 
   const activeRef = useRef(active);
@@ -195,6 +196,23 @@ export default function LogsTab() {
     }
   }
 
+  async function redeploy() {
+    if (!active || redeploying) return;
+    if (!window.confirm(`¿Redeploy de "${active}"? Baja el código más reciente, reconstruye (limpia dist/cache) y reinicia. Puede tardar ~1 min.`)) return;
+    setRedeploying(true);
+    setRestartMsg(null);
+    try {
+      await api.redeployLog(active);
+      setRestartMsg(`⏳ ${active}: redeploy lanzado — reconstruyendo…`);
+      window.setTimeout(() => void fetchOnce(activeRef.current), 4000);
+    } catch (e: any) {
+      setRestartMsg(`${active}: ${e?.message ?? 'no se pudo lanzar el redeploy'}`);
+    } finally {
+      setRedeploying(false);
+      window.setTimeout(() => setRestartMsg(null), 9000);
+    }
+  }
+
   useEffect(() => {
     stickyBottomRef.current = true; // al cambiar de pestaña, pegarse al fondo (último)
     if (active) void fetchOnce(active);
@@ -253,13 +271,6 @@ export default function LogsTab() {
         finding={<>Últimas líneas del back por proceso. Polling cada <span className="num mono text-ink">{POLL_MS / 1000}</span>s, bajo demanda; no mantiene conexiones abiertas.</>}
         actions={
           <>
-            {restartMsg && <span className="text-meta text-muted mono mr-1">{restartMsg}</span>}
-            {isPm2 && (
-              <Button size="sm" variant="ghost" onClick={restart} disabled={restarting} title="reiniciar el proceso (pm2 restart)">
-                <ArrowClockwise size={13} weight="bold" aria-hidden className={restarting ? 'animate-spin' : ''} />
-                <span className="ml-1">{restarting ? 'reiniciando…' : 'reiniciar'}</span>
-              </Button>
-            )}
             <Button size="sm" variant="ghost" onClick={clear} title="limpiar buffer">
               <Broom size={13} weight="bold" aria-hidden />
               <span className="ml-1">limpiar</span>
@@ -308,7 +319,21 @@ export default function LogsTab() {
       {sources && sources.length > 0 && (
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-card border border-rule bg-surface px-3 py-2.5">
-            <div className="text-meta uppercase tracking-wide text-faint">Estado</div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-meta uppercase tracking-wide text-faint">Estado</span>
+              {isPm2 && (
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="ghost" onClick={restart} disabled={restarting || redeploying} title="reiniciar el proceso (pm2 restart)">
+                    <ArrowClockwise size={12} weight="bold" aria-hidden className={restarting ? 'animate-spin' : ''} />
+                    <span className="ml-1">{restarting ? 'reiniciando…' : 'reiniciar'}</span>
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={redeploy} disabled={restarting || redeploying} title="redeploy: baja código, reconstruye (limpia cache) y reinicia">
+                    <Rocket size={12} weight="bold" aria-hidden className={redeploying ? 'animate-spin' : ''} />
+                    <span className="ml-1">{redeploying ? 'desplegando…' : 'redeploy'}</span>
+                  </Button>
+                </div>
+              )}
+            </div>
             <div className="mt-1 flex items-center gap-2">
               <span className={cn('inline-block h-2.5 w-2.5 rounded-full', face.dot)} aria-hidden />
               <span className={cn('text-body font-medium', face.ink)}>{health.word}</span>
@@ -318,6 +343,7 @@ export default function LogsTab() {
                 ? `${health.reason}${current.proc ? ` · ${fmtUptime(current.proc.uptimeMs)} · ↺ ${current.proc.restarts ?? '—'}` : ''}`
                 : 'no es proceso pm2'}
             </div>
+            {restartMsg && <div className="mt-1.5 text-meta text-ink">{restartMsg}</div>}
           </div>
 
           <div className="min-w-0 rounded-card border border-rule bg-surface px-3 py-2.5">
