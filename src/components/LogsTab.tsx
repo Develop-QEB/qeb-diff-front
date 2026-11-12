@@ -40,7 +40,8 @@ function interpretLogs(lines: string[]): LogStatus {
 // --- Salud real: estado del proceso (pm2) + errores recientes del log --
 // Un proceso "online" puede estar roto por dentro (BD caída, etc.), así que
 // la salud combina el estado de pm2 con los errores recientes del log.
-const DB_DOWN_RE = /can'?t reach database|database server|ECONNREFUSED|PROTOCOL_CONNECTION_LOST|ER_CON_COUNT_ERROR|pool.*(timeout|exhaust)|getaddrinfo (ENOTFOUND|EAI_AGAIN)/i;
+const DB_DOWN_RE = /can'?t reach database|database server|ECONNREFUSED|PROTOCOL_CONNECTION_LOST|getaddrinfo (ENOTFOUND|EAI_AGAIN)/i;
+const DB_LIMIT_RE = /max_connections(_per_hour)?|too many connections|ER_CON_COUNT_ERROR|\b1226\b|\b1040\b|\b1203\b|pool.*(timeout|exhaust)/i;
 const TS_RE = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)/;
 const RECENT_MS = 120_000; // "reciente" = dentro de 2 min de la última línea (relativo, no reloj → TZ-safe)
 const HEALTH_TAIL = 40;     // si la línea no trae timestamp, se mira el tail
@@ -79,6 +80,7 @@ function overallHealth(proc: ProcStatus | null, lines: string[]): HealthInfo {
 
   let recent = 0;
   let dbDown = false;
+  let dbLimit = false;
   for (let i = 0; i < n; i++) {
     const l = stripAnsi(lines[i]);
     if (!(ERROR_RE.test(l) || HTTP5XX_RE.test(l))) continue;
@@ -87,9 +89,11 @@ function overallHealth(proc: ProcStatus | null, lines: string[]): HealthInfo {
     if (!isRecent) continue;
     recent++;
     if (DB_DOWN_RE.test(l)) dbDown = true;
+    else if (DB_LIMIT_RE.test(l)) dbLimit = true;
   }
 
   if (dbDown) return { word: 'BD inalcanzable', tone: 'negative', reason: 'no alcanza la base de datos' };
+  if (dbLimit) return { word: 'BD saturada', tone: 'negative', reason: 'excedió el límite de conexiones' };
   if (recent > 0) return { word: 'Con errores', tone: 'warning', reason: `${recent} error${recent === 1 ? '' : 'es'} reciente${recent === 1 ? '' : 's'}` };
   if (!s || s === 'unknown') return { word: '—', tone: 'faint', reason: 'sin datos de proceso' };
   return { word: 'Sanito', tone: 'positive', reason: 'online' };
@@ -260,7 +264,6 @@ export default function LogsTab() {
 
   const statusChip = (() => {
     if (paused) return <StatusPill tone="warning">pausado</StatusPill>;
-    if (current.loading) return <StatusPill tone="neutral">consultando…</StatusPill>;
     return <StatusPill tone="positive">en vivo · {POLL_MS / 1000}s</StatusPill>;
   })();
 
