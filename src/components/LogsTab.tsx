@@ -1,10 +1,56 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api, type LogSourceInfo } from '../lib/api';
 import { PageTitle, Button, UnderlineTabs, StatusPill, cn } from '../ds';
 import { Pause, Play, Broom } from '@phosphor-icons/react';
 
 const POLL_MS = 5000;
 const MAX_BUFFER = 2000;
+
+// --- Traducción de logs a lenguaje plano -------------------------------
+const ERROR_RE = /\b(error|errores|exception|unhandled|fatal|panic|segfault|traceback|ECONNREFUSED|ETIMEDOUT|ECONNRESET|EADDRINUSE|ENOTFOUND|can'?t reach|cannot reach|denied|rejected|\b50[0-9]\b)/i;
+const WARN_RE = /\b(warn|warning|advertencia|deprecated|retry|retrying|reintent|timeout|slow|lento)/i;
+
+type Health = 'ok' | 'warn' | 'error' | 'empty';
+interface LogStatus {
+  level: Health;
+  errors: number;
+  warns: number;
+  lastProblem: string | null;
+  total: number;
+}
+
+function interpretLogs(lines: string[]): LogStatus {
+  if (lines.length === 0) return { level: 'empty', errors: 0, warns: 0, lastProblem: null, total: 0 };
+  let errors = 0;
+  let warns = 0;
+  let lastError: string | null = null;
+  let lastWarn: string | null = null;
+  for (const l of lines) {
+    if (ERROR_RE.test(l)) { errors++; lastError = l; }
+    else if (WARN_RE.test(l)) { warns++; lastWarn = l; }
+  }
+  const level: Health = errors > 0 ? 'error' : warns > 0 ? 'warn' : 'ok';
+  const lastProblem = (lastError ?? lastWarn ?? '').trim().slice(0, 180) || null;
+  return { level, errors, warns, lastProblem, total: lines.length };
+}
+
+function statusText(s: LogStatus): string {
+  if (s.level === 'empty') return 'Esperando líneas…';
+  if (s.level === 'error') {
+    return `Algo falló — ${s.errors} ${s.errors === 1 ? 'error' : 'errores'} en las últimas ${s.total} líneas.`;
+  }
+  if (s.level === 'warn') {
+    return `${s.warns} ${s.warns === 1 ? 'advertencia' : 'advertencias'} — nada roto, pero échale un ojo.`;
+  }
+  return `Todo bien — sin errores en las últimas ${s.total} líneas.`;
+}
+
+const STATUS_FACE: Record<Health, { emoji: string; box: string }> = {
+  ok:    { emoji: '✅', box: 'border-positive/30 bg-positive-bg text-positive-ink' },
+  warn:  { emoji: '⚠️', box: 'border-warning/30 bg-warning-bg text-warning-ink' },
+  error: { emoji: '❌', box: 'border-negative/30 bg-negative-bg text-negative-ink' },
+  empty: { emoji: '·',  box: 'border-rule bg-raised text-muted' },
+};
 
 interface EnvState {
   lines: string[];
@@ -73,6 +119,7 @@ export default function LogsTab() {
   }
 
   useEffect(() => {
+    stickyBottomRef.current = true; // al cambiar de pestaña, pegarse al fondo (último)
     if (active) void fetchOnce(active);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
@@ -105,6 +152,7 @@ export default function LogsTab() {
   }
 
   const current = (active && states[active]) || emptyState();
+  const status = useMemo(() => interpretLogs(current.lines), [current.lines]);
 
   function clear() {
     if (!active) return;
@@ -175,10 +223,24 @@ export default function LogsTab() {
         </div>
       )}
 
+      {sources && sources.length > 0 && current.lines.length > 0 && (
+        <div className={cn('mt-4 flex items-start gap-2 rounded-chip border px-3 py-2 text-body', STATUS_FACE[status.level].box)}>
+          <span aria-hidden className="leading-5">{STATUS_FACE[status.level].emoji}</span>
+          <div className="min-w-0">
+            <div className="font-medium">{statusText(status)}</div>
+            {status.lastProblem && (
+              <div className="mt-0.5 truncate font-mono text-meta opacity-80" title={status.lastProblem}>
+                {status.lastProblem}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="mt-4 flex-1 overflow-auto rounded-card border border-rule bg-surface p-3 font-mono text-meta text-ink"
+        className="mt-3 flex-1 overflow-auto rounded-card border border-rule bg-surface p-3 font-mono text-meta text-ink"
         style={{ minHeight: 0 }}
       >
         {!sources && !sourcesError && <div className="text-muted">cargando fuentes…</div>}
@@ -188,6 +250,9 @@ export default function LogsTab() {
         {current.lines.map((l, i) => (
           <div key={i} className="whitespace-pre-wrap break-all leading-5">{l}</div>
         ))}
+        {sources && current.lines.length > 0 && (
+          <div className="leading-5" aria-hidden><span className="text-accent">▋</span></div>
+        )}
       </div>
     </div>
   );
