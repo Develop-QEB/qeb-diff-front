@@ -47,8 +47,8 @@ export default function App() {
         }}
         workspace="Develop-QEB"
       />
-      <main className="min-w-0 flex-1 overflow-auto">
-        <div className="mx-auto max-w-[1600px] px-8">
+      <main className={`min-w-0 flex-1 ${tab === 'logs' ? 'overflow-hidden' : 'overflow-auto'}`}>
+        <div className={`mx-auto max-w-[1600px] px-8 ${tab === 'logs' ? 'h-full pb-6' : ''}`}>
           {tab === 'branches' && <BranchesTab />}
           {tab === 'schema' && <SchemaTab />}
           {tab === 'anomalias' && <AnomaliasTab />}
