@@ -37,15 +37,62 @@ function interpretLogs(lines: string[]): LogStatus {
   return { level, errors: errorLines.length, warns, errorLines: errorLines.slice(-20) };
 }
 
-// --- Estado del proceso (pm2) ------------------------------------------
-function stateFace(p: ProcStatus | null): { word: string; dot: string; ink: string } {
-  const s = p?.state ?? 'unknown';
-  if (s === 'online') return { word: 'Sanito', dot: 'bg-positive-ink', ink: 'text-positive-ink' };
-  if (s === 'errored') return { word: 'Caído', dot: 'bg-negative-ink', ink: 'text-negative-ink' };
-  if (s === 'stopped') return { word: 'Apagado', dot: 'bg-faint', ink: 'text-muted' };
-  if (s === 'launching') return { word: 'Arrancando', dot: 'bg-warning-ink', ink: 'text-warning-ink' };
-  if (s === 'stopping') return { word: 'Deteniéndose', dot: 'bg-warning-ink', ink: 'text-warning-ink' };
-  return { word: '—', dot: 'bg-faint', ink: 'text-faint' };
+// --- Salud real: estado del proceso (pm2) + errores recientes del log --
+// Un proceso "online" puede estar roto por dentro (BD caída, etc.), así que
+// la salud combina el estado de pm2 con los errores recientes del log.
+const DB_DOWN_RE = /can'?t reach database|database server|ECONNREFUSED|PROTOCOL_CONNECTION_LOST|ER_CON_COUNT_ERROR|pool.*(timeout|exhaust)|getaddrinfo (ENOTFOUND|EAI_AGAIN)/i;
+const TS_RE = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)/;
+const RECENT_MS = 120_000; // "reciente" = dentro de 2 min de la última línea (relativo, no reloj → TZ-safe)
+const HEALTH_TAIL = 40;     // si la línea no trae timestamp, se mira el tail
+
+function parseTs(line: string): number | null {
+  const m = line.match(TS_RE);
+  if (!m) return null;
+  const t = Date.parse(m[1] + 'Z');
+  return Number.isNaN(t) ? null : t;
+}
+
+type HealthTone = 'positive' | 'negative' | 'warning' | 'muted' | 'faint';
+interface HealthInfo { word: string; tone: HealthTone; reason: string }
+
+function toneClasses(t: HealthTone): { dot: string; ink: string } {
+  switch (t) {
+    case 'positive': return { dot: 'bg-positive-ink', ink: 'text-positive-ink' };
+    case 'negative': return { dot: 'bg-negative-ink', ink: 'text-negative-ink' };
+    case 'warning': return { dot: 'bg-warning-ink', ink: 'text-warning-ink' };
+    case 'muted': return { dot: 'bg-faint', ink: 'text-muted' };
+    default: return { dot: 'bg-faint', ink: 'text-faint' };
+  }
+}
+
+function overallHealth(proc: ProcStatus | null, lines: string[]): HealthInfo {
+  const s = proc?.state;
+  if (s === 'stopped') return { word: 'Apagado', tone: 'muted', reason: 'proceso detenido' };
+  if (s === 'errored') return { word: 'Caído', tone: 'negative', reason: 'proceso con error' };
+  if (s === 'launching') return { word: 'Arrancando', tone: 'warning', reason: 'iniciando…' };
+  if (s === 'stopping') return { word: 'Deteniéndose', tone: 'warning', reason: 'deteniéndose…' };
+
+  // online o desconocido: la salud real la dicen los logs recientes
+  const n = lines.length;
+  let newestTs: number | null = null;
+  for (let i = n - 1; i >= 0 && i >= n - 120; i--) { const t = parseTs(lines[i]); if (t != null) { newestTs = t; break; } }
+
+  let recent = 0;
+  let dbDown = false;
+  for (let i = 0; i < n; i++) {
+    const l = stripAnsi(lines[i]);
+    if (!(ERROR_RE.test(l) || HTTP5XX_RE.test(l))) continue;
+    const ts = parseTs(l);
+    const isRecent = (ts != null && newestTs != null) ? (newestTs - ts <= RECENT_MS) : (i >= n - HEALTH_TAIL);
+    if (!isRecent) continue;
+    recent++;
+    if (DB_DOWN_RE.test(l)) dbDown = true;
+  }
+
+  if (dbDown) return { word: 'BD inalcanzable', tone: 'negative', reason: 'no alcanza la base de datos' };
+  if (recent > 0) return { word: 'Con errores', tone: 'warning', reason: `${recent} error${recent === 1 ? '' : 'es'} reciente${recent === 1 ? '' : 's'}` };
+  if (!s || s === 'unknown') return { word: '—', tone: 'faint', reason: 'sin datos de proceso' };
+  return { word: 'Sanito', tone: 'positive', reason: 'online' };
 }
 
 function fmtUptime(ms: number | null): string {
@@ -183,7 +230,8 @@ export default function LogsTab() {
 
   const current = (active && states[active]) || emptyState();
   const status = useMemo(() => interpretLogs(current.lines), [current.lines]);
-  const face = stateFace(current.proc);
+  const health = useMemo(() => overallHealth(current.proc, current.lines), [current.proc, current.lines]);
+  const face = toneClasses(health.tone);
   const isPm2 = current.source === 'pm2' || (sources?.find((s) => s.key === active)?.type === 'pm2');
 
   function clear() {
@@ -263,11 +311,11 @@ export default function LogsTab() {
             <div className="text-meta uppercase tracking-wide text-faint">Estado</div>
             <div className="mt-1 flex items-center gap-2">
               <span className={cn('inline-block h-2.5 w-2.5 rounded-full', face.dot)} aria-hidden />
-              <span className={cn('text-body font-medium', face.ink)}>{face.word}</span>
+              <span className={cn('text-body font-medium', face.ink)}>{health.word}</span>
             </div>
             <div className="mt-1 text-meta text-muted mono">
               {isPm2
-                ? (current.proc ? `${current.proc.state} · ${fmtUptime(current.proc.uptimeMs)} · ↺ ${current.proc.restarts ?? '—'}` : 'leyendo proceso…')
+                ? `${health.reason}${current.proc ? ` · ${fmtUptime(current.proc.uptimeMs)} · ↺ ${current.proc.restarts ?? '—'}` : ''}`
                 : 'no es proceso pm2'}
             </div>
           </div>
