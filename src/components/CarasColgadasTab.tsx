@@ -134,7 +134,7 @@ function timeAgo(iso: string | null): string {
 
 function CampanaRow({ c }: { c: CampanaColgada }) {
   const appUrl = `https://app.qeb.mx/campanas/detail/${c.campania_id}`;
-  const statusTone = c.reservadas_colgadas >= 50 ? 'negative' : c.reservadas_colgadas >= 10 ? 'warning' : 'info';
+  const statusTone = c.reservadas_colgadas >= 50 ? 'negative' : c.reservadas_colgadas >= 10 ? 'warning' : 'neutral';
 
   return (
     <TR>
@@ -145,7 +145,7 @@ function CampanaRow({ c }: { c: CampanaColgada }) {
         </div>
       </TD>
       <TD>
-        <StatusPill tone="info">
+        <StatusPill tone="neutral">
           <span className="mono">{c.status ?? '—'}</span>
         </StatusPill>
       </TD>
