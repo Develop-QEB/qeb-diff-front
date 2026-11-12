@@ -26,12 +26,25 @@ interface LogStatus {
 
 function interpretLogs(lines: string[]): LogStatus {
   if (lines.length === 0) return { level: 'empty', errors: 0, warns: 0, errorLines: [] };
+  const seen = new Set<string>();
   const errorLines: string[] = [];
   let warns = 0;
+  let dbRetry = 0;
+  let lastRetry = '';
   for (const raw of lines) {
     const l = stripAnsi(raw);
-    if (ERROR_RE.test(l) || HTTP5XX_RE.test(l)) errorLines.push(l);
-    else if (WARN_RE.test(l)) warns++;
+    if (ERROR_RE.test(l) || HTTP5XX_RE.test(l)) {
+      const key = l.trim();                              // dedup: un crash-loop no inunda con líneas iguales
+      if (key && !seen.has(key)) { seen.add(key); errorLines.push(l); }
+    } else if (DB_RETRY_RE.test(l)) {
+      dbRetry++; lastRetry = l.trim();
+    } else if (WARN_RE.test(l)) {
+      warns++;
+    }
+  }
+  // Loop de reintentos de conexión a BD = fallo real aunque no diga "error"
+  if (dbRetry >= 2) {
+    errorLines.push(`BD no responde — ${dbRetry} reintentos de conexión${lastRetry ? ` · ej: ${lastRetry}` : ''}`);
   }
   const level: Health = errorLines.length ? 'error' : warns ? 'warn' : 'ok';
   return { level, errors: errorLines.length, warns, errorLines: errorLines.slice(-20) };
@@ -42,6 +55,9 @@ function interpretLogs(lines: string[]): LogStatus {
 // la salud combina el estado de pm2 con los errores recientes del log.
 const DB_DOWN_RE = /can'?t reach database|database server|ECONNREFUSED|PROTOCOL_CONNECTION_LOST|getaddrinfo (ENOTFOUND|EAI_AGAIN)/i;
 const DB_LIMIT_RE = /max_connections(_per_hour)?|too many connections|ER_CON_COUNT_ERROR|\b1226\b|\b1040\b|\b1203\b|pool.*(timeout|exhaust)/i;
+// Loop de reintentos de conexión a BD: "[DB] Retrying in 2s...", "reconnecting to database",
+// "reintentando conexión". Un back sano conecta al primer intento; reintentos recientes = BD caída.
+const DB_RETRY_RE = /\[?\b(?:db|prisma|mysql|pool|sequelize)\b\]?[^a-z]{0,20}(?:retry|retrying|reconnect|reconnecting)|(?:retry|retrying|reconnect|reconnecting|reintent\w*)[^a-z]{0,20}(?:database|base de datos|conexi[oó]n a la bd|db connection)/i;
 const TS_RE = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?)/;
 const RECENT_MS = 120_000; // "reciente" = dentro de 2 min de la última línea (relativo, no reloj → TZ-safe)
 const HEALTH_TAIL = 40;     // si la línea no trae timestamp, se mira el tail
@@ -81,12 +97,16 @@ function overallHealth(proc: ProcStatus | null, lines: string[]): HealthInfo {
   let recent = 0;
   let dbDown = false;
   let dbLimit = false;
+  let dbRetry = 0;
   for (let i = 0; i < n; i++) {
     const l = stripAnsi(lines[i]);
-    if (!(ERROR_RE.test(l) || HTTP5XX_RE.test(l))) continue;
+    const isErr = ERROR_RE.test(l) || HTTP5XX_RE.test(l);
+    const isRetry = DB_RETRY_RE.test(l);
+    if (!isErr && !isRetry) continue;
     const ts = parseTs(l);
     const isRecent = (ts != null && newestTs != null) ? (newestTs - ts <= RECENT_MS) : (i >= n - HEALTH_TAIL);
     if (!isRecent) continue;
+    if (isRetry) { dbRetry++; continue; } // el reintento marca la BD, no cuenta como "error" suelto
     recent++;
     if (DB_DOWN_RE.test(l)) dbDown = true;
     else if (DB_LIMIT_RE.test(l)) dbLimit = true;
@@ -94,6 +114,8 @@ function overallHealth(proc: ProcStatus | null, lines: string[]): HealthInfo {
 
   if (dbDown) return { word: 'BD inalcanzable', tone: 'negative', reason: 'no alcanza la base de datos' };
   if (dbLimit) return { word: 'BD saturada', tone: 'negative', reason: 'excedió el límite de conexiones' };
+  // Un back sano conecta al primer intento; reintentos recientes = la BD no responde.
+  if (dbRetry >= 2) return { word: 'BD inalcanzable', tone: 'negative', reason: 'la BD no responde — reintentando conexión' };
   if (recent > 0) return { word: 'Con errores', tone: 'warning', reason: `${recent} error${recent === 1 ? '' : 'es'} reciente${recent === 1 ? '' : 's'}` };
   if (!s || s === 'unknown') return { word: '—', tone: 'faint', reason: 'sin datos de proceso' };
   return { word: 'Sanito', tone: 'positive', reason: 'online' };
