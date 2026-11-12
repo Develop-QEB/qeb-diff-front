@@ -47,6 +47,21 @@ export interface BranchDiffRes {
   summary: { exclusivosA: number; exclusivosB: number; equivalentesA: number; equivalentesB: number; mergesA: number; mergesB: number; revertsA: number; revertsB: number };
 }
 
+export interface LogSourceInfo {
+  key: string;
+  label: string;
+  type: 'pm2' | 'do';
+  configured: boolean;
+}
+export interface LogsRes {
+  env: string;
+  source: 'pm2' | 'digitalocean';
+  lines: string[];
+  cursor: string | null;
+  truncated: boolean;
+  fetchedAt: string;
+}
+
 const API_BASE = ((import.meta as any).env?.VITE_API_URL ?? '').toString().replace(/\/+$/, '');
 const u = (path: string): string => `${API_BASE}${path}`;
 
@@ -111,11 +126,12 @@ export const api = {
   schemaAnomalies: () => j<any[]>('/api/anomalies/schema'),
   huerfanas: (db: DbName) => j<any>(`/api/huerfanas/${db}`),
   carasColgadas: (db: DbName) => j<any>(`/api/caras-colgadas/${db}`),
-  logs: (env: DbName, since?: string | null, lines = 200) => {
+  logSources: () => j<LogSourceInfo[]>('/api/logs/sources'),
+  logs: (sourceKey: string, since?: string | null, lines = 200) => {
     const q = new URLSearchParams();
     if (since) q.set('since', since);
     q.set('lines', String(lines));
-    return j<{ env: DbName; source: 'pm2' | 'digitalocean'; lines: string[]; cursor: string | null; truncated: boolean; fetchedAt: string }>(`/api/logs/${env}?${q.toString()}`);
+    return j<LogsRes>(`/api/logs/${encodeURIComponent(sourceKey)}?${q.toString()}`);
   },
   listIgnored: (repo?: RepoName) => j<any[]>(`/api/ignored${repo ? `?repo=${repo}` : ''}`),
   addIgnored: async (repo: RepoName, hash: string, subject: string, reason?: string) => {

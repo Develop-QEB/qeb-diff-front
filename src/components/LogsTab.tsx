@@ -1,15 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { api, DbName } from '../lib/api';
+import { api, type LogSourceInfo } from '../lib/api';
 import { PageTitle, Button, UnderlineTabs, StatusPill, cn } from '../ds';
 import { Pause, Play, Broom } from '@phosphor-icons/react';
-
-type LogEnv = DbName;
-const ENVS: Array<{ id: LogEnv; label: string }> = [
-  { id: 'stage', label: 'stage' },
-  { id: 'dev', label: 'dev' },
-  { id: 'release', label: 'release' },
-  { id: 'main', label: 'main' },
-];
 
 const POLL_MS = 5000;
 const MAX_BUFFER = 2000;
@@ -28,11 +20,11 @@ function emptyState(): EnvState {
 }
 
 export default function LogsTab() {
-  const [active, setActive] = useState<LogEnv>('stage');
+  const [sources, setSources] = useState<LogSourceInfo[] | null>(null);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+  const [active, setActive] = useState<string>('');
   const [paused, setPaused] = useState(false);
-  const [states, setStates] = useState<Record<LogEnv, EnvState>>({
-    stage: emptyState(), dev: emptyState(), release: emptyState(), main: emptyState(),
-  });
+  const [states, setStates] = useState<Record<string, EnvState>>({});
 
   const activeRef = useRef(active);
   const pausedRef = useRef(paused);
@@ -44,18 +36,28 @@ export default function LogsTab() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickyBottomRef = useRef(true);
 
-  async function fetchOnce(env: LogEnv) {
-    const cur = statesRef.current[env];
-    setStates((s) => ({ ...s, [env]: { ...s[env], loading: true } }));
+  useEffect(() => {
+    api.logSources()
+      .then((list) => {
+        setSources(list);
+        setStates(Object.fromEntries(list.map((s) => [s.key, emptyState()])));
+        if (list.length > 0) setActive((a) => a || list[0].key);
+      })
+      .catch((e) => setSourcesError(e?.message ?? String(e)));
+  }, []);
+
+  async function fetchOnce(key: string) {
+    const cur = statesRef.current[key] ?? emptyState();
+    setStates((s) => ({ ...s, [key]: { ...(s[key] ?? emptyState()), loading: true } }));
     try {
-      const res = await api.logs(env, cur.cursor, 200);
+      const res = await api.logs(key, cur.cursor, 200);
       setStates((s) => {
-        const prev = s[env];
+        const prev = s[key] ?? emptyState();
         const merged = [...prev.lines, ...res.lines];
         const trimmed = merged.length > MAX_BUFFER ? merged.slice(merged.length - MAX_BUFFER) : merged;
         return {
           ...s,
-          [env]: {
+          [key]: {
             lines: trimmed,
             cursor: res.cursor ?? prev.cursor,
             error: null,
@@ -66,23 +68,24 @@ export default function LogsTab() {
         };
       });
     } catch (e: any) {
-      setStates((s) => ({ ...s, [env]: { ...s[env], loading: false, error: e?.message ?? String(e) } }));
+      setStates((s) => ({ ...s, [key]: { ...(s[key] ?? emptyState()), loading: false, error: e?.message ?? String(e) } }));
     }
   }
 
   useEffect(() => {
-    void fetchOnce(active);
+    if (active) void fetchOnce(active);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
   useEffect(() => {
     const id = setInterval(() => {
       if (pausedRef.current) return;
-      const env = activeRef.current;
-      const st = statesRef.current[env];
-      if (st.loading) return;
+      const key = activeRef.current;
+      if (!key) return;
+      const st = statesRef.current[key];
+      if (!st || st.loading) return;
       if (st.error && /sin configurar/.test(st.error)) return;
-      void fetchOnce(env);
+      void fetchOnce(key);
     }, POLL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,10 +104,11 @@ export default function LogsTab() {
     stickyBottomRef.current = distanceFromBottom < 40;
   }
 
-  const current = states[active];
+  const current = (active && states[active]) || emptyState();
 
   function clear() {
-    setStates((s) => ({ ...s, [active]: { ...s[active], lines: [], cursor: null } }));
+    if (!active) return;
+    setStates((s) => ({ ...s, [active]: { ...(s[active] ?? emptyState()), lines: [], cursor: null } }));
     stickyBottomRef.current = true;
   }
 
@@ -119,7 +123,7 @@ export default function LogsTab() {
     <div className="flex h-full flex-col">
       <PageTitle
         title="Logs"
-        finding={<>Últimas líneas del back por ambiente. Polling cada <span className="num mono text-ink">{POLL_MS / 1000}</span>s, bajo demanda; no mantiene conexiones abiertas.</>}
+        finding={<>Últimas líneas del back por proceso. Polling cada <span className="num mono text-ink">{POLL_MS / 1000}</span>s, bajo demanda; no mantiene conexiones abiertas.</>}
         actions={
           <>
             <Button size="sm" variant="ghost" onClick={clear} title="limpiar buffer">
@@ -134,17 +138,31 @@ export default function LogsTab() {
         }
       />
 
-      <UnderlineTabs
-        tabs={ENVS.map((e) => ({ id: e.id, label: e.label, count: states[e.id].lines.length }))}
-        active={active}
-        onChange={(id) => setActive(id as LogEnv)}
-        rightSlot={
-          <>
-            {statusChip}
-            {current.source && <span className="text-meta text-muted mono">{current.source}</span>}
-          </>
-        }
-      />
+      {sourcesError && (
+        <div className="my-3 rounded-chip border border-negative/30 bg-negative-bg px-3 py-2 text-body text-negative-ink">
+          {sourcesError}
+        </div>
+      )}
+
+      {sources && sources.length === 0 && !sourcesError && (
+        <div className="my-3 rounded-chip border border-warning/30 bg-warning-bg px-3 py-2 text-body text-warning-ink">
+          sin fuentes configuradas · define <span className="mono">LOGS_SOURCES</span> en el .env del back
+        </div>
+      )}
+
+      {sources && sources.length > 0 && (
+        <UnderlineTabs
+          tabs={sources.map((s) => ({ id: s.key, label: s.label, count: states[s.key]?.lines.length ?? 0 }))}
+          active={active}
+          onChange={(id) => setActive(id)}
+          rightSlot={
+            <>
+              {statusChip}
+              {current.source && <span className="text-meta text-muted mono">{current.source}</span>}
+            </>
+          }
+        />
+      )}
 
       {current.error && (
         <div className={cn(
@@ -163,7 +181,8 @@ export default function LogsTab() {
         className="mt-4 flex-1 overflow-auto rounded-card border border-rule bg-surface p-3 font-mono text-meta text-ink"
         style={{ minHeight: 0 }}
       >
-        {current.lines.length === 0 && !current.error && (
+        {!sources && !sourcesError && <div className="text-muted">cargando fuentes…</div>}
+        {sources && current.lines.length === 0 && !current.error && (
           <div className="text-muted">sin líneas aún…</div>
         )}
         {current.lines.map((l, i) => (
