@@ -53,6 +53,14 @@ export interface LogSourceInfo {
   type: 'pm2' | 'do';
   configured: boolean;
 }
+export type ProcState = 'online' | 'stopped' | 'errored' | 'launching' | 'stopping' | 'unknown';
+export interface ProcStatus {
+  state: ProcState;
+  uptimeMs: number | null;
+  restarts: number | null;
+  cpu: number | null;
+  mem: number | null;
+}
 export interface LogsRes {
   env: string;
   source: 'pm2' | 'digitalocean';
@@ -60,6 +68,7 @@ export interface LogsRes {
   cursor: string | null;
   truncated: boolean;
   fetchedAt: string;
+  proc: ProcStatus | null;
 }
 
 const API_BASE = ((import.meta as any).env?.VITE_API_URL ?? '').toString().replace(/\/+$/, '');
@@ -132,6 +141,12 @@ export const api = {
     if (since) q.set('since', since);
     q.set('lines', String(lines));
     return j<LogsRes>(`/api/logs/${encodeURIComponent(sourceKey)}?${q.toString()}`);
+  },
+  restartLog: async (sourceKey: string) => {
+    const r = await fetch(u(`/api/logs/${encodeURIComponent(sourceKey)}/restart`), { method: 'POST', headers: authHeaders() });
+    if (r.status === 401) { triggerUnauthorized(); throw new Error('sesion invalida'); }
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || `${r.status}`);
+    return r.json() as Promise<{ ok: boolean; proc: ProcStatus | null }>;
   },
   listIgnored: (repo?: RepoName) => j<any[]>(`/api/ignored${repo ? `?repo=${repo}` : ''}`),
   addIgnored: async (repo: RepoName, hash: string, subject: string, reason?: string) => {
